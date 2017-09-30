@@ -5,14 +5,12 @@ import com.mcmoddev.lib.material.MMDMaterial;
 import com.mcmoddev.mmdbuckets.init.Materials;
 import com.mcmoddev.mmdbuckets.util.DispenseMMDBucket;
 import com.mcmoddev.mmdbuckets.util.MMDBucketWrapper;
-import com.mcmoddev.mmdbuckets.util.Utils;
 
 import net.minecraft.block.BlockDispenser;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.stats.StatList;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.EnumActionResult;
 import net.minecraft.util.EnumFacing;
@@ -76,25 +74,19 @@ public class ItemMMDBucket extends Item implements IOreDictionaryEntry, IMMDObje
 	 */
 	@Override
 	public ActionResult<ItemStack> onItemRightClick(@Nonnull World world, @Nonnull EntityPlayer player, @Nonnull EnumHand hand) {
-		MMDBuckets.logger.fatal("onItemRightClick(%s, %s, %s)", world, player, hand);
 		ItemStack itemIn = player.getHeldItem(hand);
 		FluidStack fluidStack = getFluid(itemIn);
 
-		MMDBuckets.logger.fatal("itemIn: %s -- fluidStack: %s", itemIn, fluidStack);
-		
-		RayTraceResult trace = Utils.getNearestBlockWithDefaultReachDistance(world,player);
+		RayTraceResult trace = this.rayTrace(world, player, true);
 		ActionResult<ItemStack> ret = ForgeEventFactory.onBucketUse(player, world, itemIn, trace);
 		if( ret != null ) {
-			MMDBuckets.logger.fatal("ret == %s", ret);
 			return ret;
 		}
 		
 
 		if( trace == null ) {
-			MMDBuckets.logger.fatal("Trace is Null");
 			return new ActionResult<ItemStack>(EnumActionResult.PASS, itemIn);
 		} else if( trace.typeOfHit != RayTraceResult.Type.BLOCK ) {
-			MMDBuckets.logger.fatal("Trace result is not BLOCK");
 			return new ActionResult<ItemStack>(EnumActionResult.PASS, itemIn);
 		} else {
 			BlockPos pos = trace.getBlockPos();
@@ -102,14 +94,11 @@ public class ItemMMDBucket extends Item implements IOreDictionaryEntry, IMMDObje
 
 			// can we place liquid there?
 			if (!world.isBlockModifiable(player, pos)) {
-				MMDBuckets.logger.fatal("Not Modifiable!");
 				return new ActionResult<ItemStack>(EnumActionResult.FAIL, itemIn);
 			} else {
 				BlockPos nPos = world.getBlockState(pos).getBlock().isReplaceable(world, pos) &&
 						trace.sideHit == EnumFacing.UP ? pos : pos.offset(trace.sideHit);
-				MMDBuckets.logger.fatal("nPos = %s", nPos);				
 				if(!player.canPlayerEdit(nPos, trace.sideHit, itemIn)) {
-					MMDBuckets.logger.fatal("Player Cannot Edit");
 					return new ActionResult<ItemStack>(EnumActionResult.FAIL, itemIn);
 				} else {
 					FluidActionResult result = FluidUtil.tryPlaceFluid(player, world, nPos, itemIn, fluidStack);
@@ -119,10 +108,8 @@ public class ItemMMDBucket extends Item implements IOreDictionaryEntry, IMMDObje
 						ItemStack emptyStack = !drained.isEmpty()?drained.copy():new ItemStack(this);
 						
 						if( itemIn.isEmpty() ) {
-							MMDBuckets.logger.fatal("itemIn.isEmpty() == true");
 							return ActionResult.newResult(EnumActionResult.SUCCESS, emptyStack);
 						} else {
-							MMDBuckets.logger.fatal("itemIn.isEmpty() != true");
 							ItemHandlerHelper.giveItemToPlayer(player, emptyStack);
 							return ActionResult.newResult(EnumActionResult.SUCCESS, itemIn);
 						}
@@ -131,7 +118,6 @@ public class ItemMMDBucket extends Item implements IOreDictionaryEntry, IMMDObje
 			}
 		}
 		// couldn't place liquid there
-		MMDBuckets.logger.fatal("Bad Click or Creative Mode");
 		return ActionResult.newResult(EnumActionResult.FAIL, itemIn);
 	}
 	
@@ -157,10 +143,8 @@ public class ItemMMDBucket extends Item implements IOreDictionaryEntry, IMMDObje
 		ItemStack bucket = empty.copy();
 		bucket.setCount(1);
 		
-		MMDBuckets.logger.fatal("onFillBucket(%s)", ev);
 		RayTraceResult target = ev.getTarget();		
 		if( target == null || target.typeOfHit != RayTraceResult.Type.BLOCK ) {
-			MMDBuckets.logger.fatal("Bad Click ?");
 			return;
 		}
 		
@@ -168,7 +152,9 @@ public class ItemMMDBucket extends Item implements IOreDictionaryEntry, IMMDObje
 		BlockPos targetPos = target.getBlockPos();
 
 		FluidActionResult res = FluidUtil.tryPickUpFluid(bucket, ev.getEntityPlayer(), world, targetPos, target.sideHit); 
-		MMDBuckets.logger.fatal("FluidUtil.tryPickupFluid res: %s", res);
+		MMDBuckets.logger.fatal("FluidActionResult res = FluidUtil.tryPickupFluid(%s, %s, %s, %s, %s)", bucket, ev.getEntityPlayer(), world, targetPos, target.sideHit);
+		MMDBuckets.logger.fatal("res.isSuccess() == %s, res.getResult() == %s", res.isSuccess(), res.getResult());
+		
 		if( res.isSuccess() ) {
 			MMDBuckets.logger.fatal("Result Success - %s", res.getResult());
 			ev.setResult(Event.Result.ALLOW);
@@ -182,7 +168,8 @@ public class ItemMMDBucket extends Item implements IOreDictionaryEntry, IMMDObje
 	public int getCapacity() {
 		return Fluid.BUCKET_VOLUME;
 	}
-		
+
+	
     @Override
     public ICapabilityProvider initCapabilities(ItemStack stack, NBTTagCompound nbt)
     {
